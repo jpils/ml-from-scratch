@@ -1,4 +1,4 @@
-use std::{usize, vec};
+use std::{ops::Index, vec};
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TensorError {
@@ -62,29 +62,33 @@ impl Tensor2 {
     }
 
     pub fn transpose(&self) -> Tensor2 {
-        if self.dim.0 == 1 || self.dim.1 == 1 {
-            return Tensor2 { dim: (self.dim.1, self.dim.0), inner: self.inner.clone() };
-        }
+        let dim = self.dim;
+        let mut transpose: Vec<f32> =  Vec::with_capacity(dim.0*dim.1);
 
-        let mut vec: Vec<f32> = self.inner.clone();
-
-        for i in 1..self.dim.0 {
-            for j in 1..self.dim.1 {
-                let cur_idx = dbg!(self.get_idx(i, j));
-                let new_idx = dbg!(self.get_idx(j, i));
-
-                vec.swap(cur_idx, new_idx);
+        for j in 0..dim.1 {
+            for i in 0..dim.0 {
+                let idx = self.get_idx(i, j);
+                transpose.push(self.inner[idx]);
             }
         }
 
-        Tensor2 { dim: (self.dim.1, self.dim.0), inner: vec }
+        Tensor2 { dim: (dim.1, dim.0), inner: transpose }
+    }
+}
+
+impl Index<(usize, usize)> for Tensor2 {
+    type Output = f32;
+
+    fn index(&self, index: (usize, usize)) -> &Self::Output {
+        let idx = self.get_idx(index.0, index.1);
+        &self.inner[idx]
     }
 }
 
 impl Tensor2 {
     #[inline(always)]
     fn get_idx(&self, i: usize, j: usize) -> usize {
-        j + i * self.dim.0
+        j + i * self.dim.1
     }
 }
 
@@ -137,11 +141,17 @@ mod test {
     }
 
     #[test]
+    fn test_get_idx() {
+        let tensor = Tensor2::zeros(4, 5);
+        assert_eq!(tensor.get_idx(2, 4), 14)
+    }
+
+    #[test]
     fn test_transpose() {
         let data1: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let tensor1 = Tensor2::from_vec((2,3), data1).unwrap();
 
-        let data2: Vec<f32> = vec![1.0, 3.0, 5.0, 2.0, 4.0, 6.0];
+        let data2: Vec<f32> = vec![1.0, 4.0, 2.0, 5.0, 3.0, 6.0];
         let tensor2 = Tensor2::from_vec((3,2), data2).unwrap();
 
         assert_eq!(tensor1.transpose(), tensor2);
